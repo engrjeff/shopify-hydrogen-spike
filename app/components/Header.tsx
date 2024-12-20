@@ -1,12 +1,17 @@
-import {Suspense} from 'react';
-import {Await, NavLink, useAsyncValue} from '@remix-run/react';
+import {Await, Link, NavLink, useAsyncValue} from '@remix-run/react';
 import {
   type CartViewPayload,
+  Image,
   useAnalytics,
   useOptimisticCart,
 } from '@shopify/hydrogen';
-import type {HeaderQuery, CartApiQueryFragment} from 'storefrontapi.generated';
+import {Suspense} from 'react';
+import type {CartApiQueryFragment, HeaderQuery} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
+import {cn} from '~/lib/utils';
+import {AccountMenu} from './AccountMenu';
+import {MenuIcon} from './Icons';
+import {MiniCart} from './MiniCart';
 
 interface HeaderProps {
   header: HeaderQuery;
@@ -24,10 +29,51 @@ export function Header({
   publicStoreDomain,
 }: HeaderProps) {
   const {shop, menu} = header;
+
   return (
-    <header className="header">
-      <NavLink prefetch="intent" to="/" style={activeLinkStyle} end>
-        <strong>{shop.name}</strong>
+    <header className="max-w-full z-[20] bg-white">
+      <div className="container w-full max-w-[1400px] mx-auto px-4 lg:py-[11px] h-14 lg:h-[73.5px]">
+        <div className="grid grid-cols-[auto_1fr_1fr] gap-4 items-center lg:grid-cols-3 py-3">
+          <button
+            className="justify-self-start lg:invisible lg:opacity-0 lg:pointer-events-none"
+            aria-label="Menu"
+          >
+            <MenuIcon aria-hidden={true} className="size-6" />
+          </button>
+          <Link
+            prefetch="intent"
+            to="/"
+            className="lg:justify-self-center mt-1"
+          >
+            <Image
+              src={shop.brand?.logo?.image?.url}
+              alt={shop.brand?.logo?.image?.altText ?? shop.name}
+              width={115}
+              height={27}
+            />
+          </Link>
+
+          <div className="justify-self-end flex items-center gap-2">
+            <span>Search</span>
+            <AccountMenu isLoggedIn={isLoggedIn} />
+            <MiniCart cart={cart} />
+          </div>
+        </div>
+      </div>
+
+      <Megamenu
+        menu={menu}
+        viewport="desktop"
+        primaryDomainUrl={header.shop.primaryDomain.url}
+        publicStoreDomain={publicStoreDomain}
+      />
+      {/* <NavLink prefetch="intent" to="/" end>
+        <Image
+          src={shop.brand?.logo?.image?.url}
+          alt={shop.brand?.logo?.image?.altText ?? shop.name}
+          width={115}
+          height={27}
+        />
       </NavLink>
       <HeaderMenu
         menu={menu}
@@ -35,12 +81,12 @@ export function Header({
         primaryDomainUrl={header.shop.primaryDomain.url}
         publicStoreDomain={publicStoreDomain}
       />
-      <HeaderCtas isLoggedIn={isLoggedIn} cart={cart} />
+      <HeaderCtas isLoggedIn={isLoggedIn} cart={cart} /> */}
     </header>
   );
 }
 
-export function HeaderMenu({
+export function Megamenu({
   menu,
   primaryDomainUrl,
   viewport,
@@ -51,48 +97,74 @@ export function HeaderMenu({
   viewport: Viewport;
   publicStoreDomain: HeaderProps['publicStoreDomain'];
 }) {
-  const className = `header-menu-${viewport}`;
   const {close} = useAside();
 
   return (
-    <nav className={className} role="navigation">
-      {viewport === 'mobile' && (
-        <NavLink
-          end
-          onClick={close}
-          prefetch="intent"
-          style={activeLinkStyle}
-          to="/"
-        >
-          Home
-        </NavLink>
-      )}
-      {(menu || FALLBACK_HEADER_MENU).items.map((item) => {
-        if (!item.url) return null;
+    <nav>
+      <ul className="min-h-[53px] flex items-center justify-center flex-wrap">
+        {menu?.items.map((item) => {
+          if (!item.url) return null;
+          // if the url is internal, we strip the domain
+          const url =
+            item.url.includes('myshopify.com') ||
+            item.url.includes(publicStoreDomain) ||
+            item.url.includes(primaryDomainUrl)
+              ? new URL(item.url).pathname
+              : item.url;
 
-        // if the url is internal, we strip the domain
-        const url =
-          item.url.includes('myshopify.com') ||
-          item.url.includes(publicStoreDomain) ||
-          item.url.includes(primaryDomainUrl)
-            ? new URL(item.url).pathname
-            : item.url;
-        return (
-          <NavLink
-            className="header-menu-item"
-            end
-            key={item.id}
-            onClick={close}
-            prefetch="intent"
-            style={activeLinkStyle}
-            to={url}
-          >
-            {item.title}
-          </NavLink>
-        );
-      })}
+          return (
+            <li key={`megamenu-${item.id}`} className="mr-[11px]">
+              <Link
+                prefetch="intent"
+                to={url}
+                className="h-full inline-block px-2.5 cursor-pointer"
+              >
+                <span
+                  className={cn(
+                    'text-xs leading-[53px] font-normal font-heading uppercase text-neutral-600 hover:text-black transition-colors hover:no-underline',
+                    {
+                      'text-red-500': item.title?.toLowerCase() === 'sale',
+                    },
+                  )}
+                >
+                  {item.title}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
+
+  // return (
+  //   <nav className={className} role="navigation">
+  //     {(menu || FALLBACK_HEADER_MENU).items.map((item) => {
+  //       if (!item.url) return null;
+
+  //       // if the url is internal, we strip the domain
+  //       const url =
+  //         item.url.includes('myshopify.com') ||
+  //         item.url.includes(publicStoreDomain) ||
+  //         item.url.includes(primaryDomainUrl)
+  //           ? new URL(item.url).pathname
+  //           : item.url;
+  //       return (
+  //         <NavLink
+  //           className="header-menu-item"
+  //           end
+  //           key={item.id}
+  //           onClick={close}
+  //           prefetch="intent"
+  //           style={activeLinkStyle}
+  //           to={url}
+  //         >
+  //           {item.title}
+  //         </NavLink>
+  //       );
+  //     })}
+  //   </nav>
+  // );
 }
 
 function HeaderCtas({

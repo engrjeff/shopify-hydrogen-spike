@@ -1,17 +1,23 @@
-import {defer, redirect, type LoaderFunctionArgs} from '@shopify/remix-oxygen';
-import {useLoaderData, Link, type MetaFunction} from '@remix-run/react';
+import type {FetcherWithComponents, MetaFunction} from '@remix-run/react';
+import {Link, useLoaderData} from '@remix-run/react';
+import type {VariantOptionValue} from '@shopify/hydrogen';
 import {
+  CartForm,
   getPaginationVariables,
   Image,
   Money,
-  Analytics,
+  VariantSelector,
 } from '@shopify/hydrogen';
-import type {ProductItemFragment} from 'storefrontapi.generated';
+import {defer, redirect, type LoaderFunctionArgs} from '@shopify/remix-oxygen';
+import {useState} from 'react';
+import type {PlpItemFragment} from 'storefrontapi.generated';
+import {CollectionDescription} from '~/components/CollectionDescription';
+import {FacetFilters} from '~/components/FacetFilters';
+import {SortSelect} from '~/components/SortSelect';
 import {useVariantUrl} from '~/lib/variants';
-import {PaginatedResourceSection} from '~/components/PaginatedResourceSection';
 
 export const meta: MetaFunction<typeof loader> = ({data}) => {
-  return [{title: `Hydrogen | ${data?.collection.title ?? ''} Collection`}];
+  return [{title: `${data?.collection.title ?? 'Showpo UK'}`}];
 };
 
 export async function loader(args: LoaderFunctionArgs) {
@@ -35,6 +41,11 @@ async function loadCriticalData({
 }: LoaderFunctionArgs) {
   const {handle} = params;
   const {storefront} = context;
+
+  const {searchParams} = new URL(request.url);
+
+  const queryObj = Object.fromEntries(searchParams.entries());
+
   const paginationVariables = getPaginationVariables(request, {
     pageBy: 8,
   });
@@ -43,10 +54,26 @@ async function loadCriticalData({
     throw redirect('/collections');
   }
 
-  const [{collection}] = await Promise.all([
+  const [{collection}, {collection: facets}] = await Promise.all([
     storefront.query(COLLECTION_QUERY, {
-      variables: {handle, ...paginationVariables},
+      variables: {
+        handle,
+        ...paginationVariables,
+        filters: [
+          {
+            ...queryObj,
+            available: queryObj.available
+              ? queryObj.available === 'true'
+                ? true
+                : false
+              : undefined,
+          },
+        ],
+      },
       // Add other queries here, so that they are loaded in parallel
+    }),
+    storefront.query(PLP_FACET_FILTERS, {
+      variables: {collectionHandle: handle},
     }),
   ]);
 
@@ -58,6 +85,7 @@ async function loadCriticalData({
 
   return {
     collection,
+    facets,
   };
 }
 
@@ -71,75 +99,214 @@ function loadDeferredData({context}: LoaderFunctionArgs) {
 }
 
 export default function Collection() {
-  const {collection} = useLoaderData<typeof loader>();
+  const {collection, facets} = useLoaderData<typeof loader>();
+
+  const productCount = collection.products.nodes.length;
+
+  const products = collection.products.nodes;
 
   return (
-    <div className="collection">
-      <h1>{collection.title}</h1>
-      <p className="collection-description">{collection.description}</p>
-      <PaginatedResourceSection
-        connection={collection.products}
-        resourcesClassName="products-grid"
-      >
-        {({node: product, index}) => (
-          <ProductItem
-            key={product.id}
-            product={product}
-            loading={index < 8 ? 'eager' : undefined}
-          />
+    <>
+      <div className="container w-full max-w-[1400px] mx-auto px-4">
+        <div className="pt-4 pb-2 lg:py-6 flex justify-center items-center">
+          <div className="flex items-center flex-wrap justify-center gap-1 lg:gap-3 mb-3 lg:mb-0">
+            <h1 className="font-sans font-bold text-xl mb-0 text-center whitespace-nowrap">
+              {collection.title}
+            </h1>
+            <span className="font-normal text-lightText text-sm whitespace-nowrap">
+              {productCount} {productCount > 1 ? 'items' : 'item'}
+            </span>
+          </div>
+        </div>
+        <CollectionDescription description={collection.description} />
+
+        {productCount === 0 ? (
+          <div className="text-center my-6">
+            <p className="font-semibold mb-1">
+              Sorry, there are no products for this category.
+            </p>
+            <p className="text-neutral-500 text-sm">
+              Check out our other categories!
+            </p>
+          </div>
+        ) : (
+          <div className="mb-20 md:mt-4">
+            <div className="flex flex-col xl:flex-row xl:gap-8">
+              <div className="w-[215px] flex-shrink-0 hidden xl:block space-y-2">
+                <SortSelect />
+                <FacetFilters facets={facets} />
+              </div>
+              <div className="flex-1">
+                <div className="hidden xl:flex items-center justify-end pb-6 min-h-[54px]">
+                  Top Pagination here
+                </div>
+                <ul className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-5 gap-y-3 gap-x-2">
+                  {products?.map((product, index) => (
+                    <li key={`product-${product?.id}`}>
+                      <ProductItem product={product} />
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex justify-end py-6 min-h-[54px]">
+                  Bottom Pagination here
+                </div>
+              </div>
+            </div>
+          </div>
         )}
-      </PaginatedResourceSection>
-      <Analytics.CollectionView
-        data={{
-          collection: {
-            id: collection.id,
-            handle: collection.handle,
-          },
-        }}
-      />
-    </div>
+      </div>
+    </>
   );
+
+  // return (
+  //   <div className="collection container mx-auto max-w-[1280px]">
+  //     <h1 className="text-lg">{collection.title}</h1>
+  //     <p className="text-sm line-clamp-2">{collection.description}</p>
+  //     {/* <PaginatedResourceSection
+  //       connection={collection.products}
+  //       resourcesClassName="products-grid"
+  //     >
+  //       {({node: product, index}) => (
+  //         <ProductItem
+  //           key={product.id}
+  //           product={product}
+  //           loading={index < 8 ? 'eager' : undefined}
+  //         />
+  //       )}
+  //     </PaginatedResourceSection> */}
+  //     <ul className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-5 gap-y-3 gap-x-2">
+  //       {collection.products.nodes.map((product, index) => (
+  //         <li key={product.id}>
+  //           <ProductItem
+  //             product={product}
+  //             loading={index < 8 ? 'eager' : undefined}
+  //           />
+  //         </li>
+  //       ))}
+  //     </ul>
+  //     <Analytics.CollectionView
+  //       data={{
+  //         collection: {
+  //           id: collection.id,
+  //           handle: collection.handle,
+  //         },
+  //       }}
+  //     />
+  //   </div>
+  // );
 }
 
 function ProductItem({
   product,
   loading,
 }: {
-  product: ProductItemFragment;
+  product: PlpItemFragment;
   loading?: 'eager' | 'lazy';
 }) {
   const variant = product.variants.nodes[0];
   const variantUrl = useVariantUrl(product.handle, variant.selectedOptions);
+
+  const [justAddedToCart, setJustAddedToCart] = useState(false);
+
   return (
-    <Link
-      className="product-item"
-      key={product.id}
-      prefetch="intent"
-      to={variantUrl}
-    >
-      {product.featuredImage && (
-        <Image
-          alt={product.featuredImage.altText || product.title}
-          aspectRatio="1/1"
-          data={product.featuredImage}
-          loading={loading}
-          sizes="(min-width: 45em) 400px, 100vw"
-        />
-      )}
-      <h4>{product.title}</h4>
-      <small>
+    <div className="w-full h-full relative flex flex-col">
+      <div className="relative mb-2">
+        <div className="flex relative">
+          <Link
+            prefetch="intent"
+            to={`/products/${product.handle}`}
+            className="flex-1 w-full"
+          >
+            {product.featuredImage && (
+              <Image
+                alt={product.featuredImage.altText || product.title}
+                data={product.featuredImage}
+                loading={loading}
+                aspectRatio="5/8"
+                sizes="(min-width: 45em) 375px, 100vw"
+                className="object-cover object-top"
+              />
+            )}
+            <span className="sr-only">click here to view</span>
+          </Link>
+        </div>
+
+        {justAddedToCart ? (
+          <div className="bg-black text-center py-3 absolute bottom-0 w-full">
+            <span className="uppercase text-white text-sm font-semibold">
+              It&apos;s in the bag!
+            </span>
+          </div>
+        ) : null}
+      </div>
+      <Link
+        to={`/products/${product.handle}`}
+        className="text-sm inline-block hover:underline text-center uppercase mb-1"
+      >
+        <span className="line-clamp-2 w-full">{product?.title}</span>
+      </Link>
+
+      <small className="text-center text-[15px] font-bold">
         <Money data={product.priceRange.minVariantPrice} />
       </small>
-    </Link>
+
+      <VariantSelector
+        handle={product.handle}
+        options={product.options}
+        variants={product.variants.nodes}
+      >
+        {({option}) => (
+          <>
+            <div className="flex items-center justify-center gap-1.5 flex-wrap mt-2">
+              {option.values.map((optionItem) => {
+                return (
+                  <SizeBubble key={optionItem.value} optionItem={optionItem} />
+                );
+              })}
+            </div>
+          </>
+        )}
+      </VariantSelector>
+    </div>
   );
 }
 
-const PRODUCT_ITEM_FRAGMENT = `#graphql
+function SizeBubble({optionItem}: {optionItem: VariantOptionValue}) {
+  return (
+    <CartForm
+      route="/cart"
+      inputs={{
+        lines: optionItem.variant?.id
+          ? [
+              {
+                merchandiseId: optionItem.variant?.id,
+                quantity: 1,
+                selectedVariant: optionItem.variant,
+              },
+            ]
+          : [],
+      }}
+      action={CartForm.ACTIONS.LinesAdd}
+    >
+      {(fetcher: FetcherWithComponents<any>) => (
+        <button
+          type="submit"
+          disabled={!optionItem.isAvailable || fetcher.state !== 'idle'}
+          className="select-none border border-black h-7 w-7 flex items-center justify-center text-xs font-semibold rounded-full transition-colors duration-300 hover:text-white hover:bg-black disabled:hover:bg-transparent disabled:hover:text-black hover:border-black disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {optionItem.value}
+        </button>
+      )}
+    </CartForm>
+  );
+}
+
+const PLP_ITEM_FRAGMENT = `#graphql
   fragment MoneyProductItem on MoneyV2 {
     amount
     currencyCode
   }
-  fragment ProductItem on Product {
+  fragment PLPItem on Product {
     id
     handle
     title
@@ -158,12 +325,22 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
         ...MoneyProductItem
       }
     }
-    variants(first: 1) {
+    variants(first: 10) {
       nodes {
+        id
+        availableForSale
         selectedOptions {
           name
           value
         }
+      }
+    }
+    options {
+      id
+      name
+      optionValues {
+        id
+        name
       }
     }
   }
@@ -171,7 +348,7 @@ const PRODUCT_ITEM_FRAGMENT = `#graphql
 
 // NOTE: https://shopify.dev/docs/api/storefront/2022-04/objects/collection
 const COLLECTION_QUERY = `#graphql
-  ${PRODUCT_ITEM_FRAGMENT}
+  ${PLP_ITEM_FRAGMENT}
   query Collection(
     $handle: String!
     $country: CountryCode
@@ -180,6 +357,7 @@ const COLLECTION_QUERY = `#graphql
     $last: Int
     $startCursor: String
     $endCursor: String
+    $filters: [ProductFilter!]
   ) @inContext(country: $country, language: $language) {
     collection(handle: $handle) {
       id
@@ -190,16 +368,39 @@ const COLLECTION_QUERY = `#graphql
         first: $first,
         last: $last,
         before: $startCursor,
-        after: $endCursor
+        after: $endCursor,
+        filters: $filters
       ) {
         nodes {
-          ...ProductItem
+          ...PLPItem
         }
         pageInfo {
           hasPreviousPage
           hasNextPage
           endCursor
           startCursor
+        }
+      }
+    }
+  }
+` as const;
+
+// Facet filters query
+const PLP_FACET_FILTERS = `#graphql
+  query Facets ($collectionHandle: String!) {
+    collection(handle: $collectionHandle) {
+      handle
+      products(first: 36) {
+        filters {
+          id
+          label
+          type
+          values {
+            count
+            id
+            label
+            input
+          }
         }
       }
     }

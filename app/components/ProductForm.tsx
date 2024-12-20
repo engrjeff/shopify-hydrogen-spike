@@ -6,6 +6,7 @@ import type {
 } from 'storefrontapi.generated';
 import {AddToCartButton} from '~/components/AddToCartButton';
 import {useAside} from '~/components/Aside';
+import {cn} from '~/lib/utils';
 
 export function ProductForm({
   product,
@@ -18,7 +19,7 @@ export function ProductForm({
 }) {
   const {open} = useAside();
   return (
-    <div className="product-form">
+    <div className="space-y-4">
       <VariantSelector
         handle={product.handle}
         options={product.options.filter(
@@ -26,9 +27,14 @@ export function ProductForm({
         )}
         variants={variants}
       >
-        {({option}) => <ProductOptions key={option.name} option={option} />}
+        {({option}) => (
+          <ProductOptions
+            key={option.name}
+            option={option}
+            selectedVariant={selectedVariant}
+          />
+        )}
       </VariantSelector>
-      <br />
       <AddToCartButton
         disabled={!selectedVariant || !selectedVariant.availableForSale}
         onClick={() => {
@@ -52,31 +58,40 @@ export function ProductForm({
   );
 }
 
-function ProductOptions({option}: {option: VariantOption}) {
+function ProductOptions({
+  option,
+  selectedVariant,
+}: {
+  option: VariantOption;
+  selectedVariant: ProductFragment['selectedVariant'];
+}) {
   return (
-    <div className="product-options" key={option.name}>
-      <h5>{option.name}</h5>
-      <div className="product-options-grid">
+    <div className="space-y-2" key={option.name}>
+      <h5 className="text-neutral-600">
+        {option.name}: {selectedVariant?.selectedOptions?.at(0)?.value}
+      </h5>
+      <div className="flex items-center gap-2">
         {option.values.map(({value, isAvailable, isActive, to}) => {
           return (
             <Link
-              className="product-options-item"
+              className={cn(
+                'relative cursor-pointer shrink-0 select-none text-[11px] h-12 w-12 mr-[7px] text-black border border-black text-center rounded-full flex items-center justify-center hover:bg-black hover:text-white transition-colors',
+                isActive ? 'bg-black text-white' : '',
+                !isAvailable
+                  ? 'border-neutral-300 text-neutral-300 after:absolute after:inset-y-0 after:w-px after:h-full after:bg-neutral-300 after:rotate-45 cursor-not-allowed hover:bg-transparent hover:text-neutral-300'
+                  : '',
+              )}
               key={option.name + value}
               prefetch="intent"
               preventScrollReset
               replace
               to={to}
-              style={{
-                border: isActive ? '1px solid black' : '1px solid transparent',
-                opacity: isAvailable ? 1 : 0.3,
-              }}
             >
               {value}
             </Link>
           );
         })}
       </div>
-      <br />
     </div>
   );
 }

@@ -197,9 +197,22 @@ export const HEADER_QUERY = `#graphql
       url
     }
     brand {
+      colors {
+        primary {
+          background
+          foreground
+        }
+        secondary {
+          background
+          foreground
+        }
+      }
       logo {
         image {
           url
+          altText
+          height
+          width
         }
       }
     }

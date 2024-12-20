@@ -1,24 +1,24 @@
-import {defer, type LoaderFunctionArgs} from '@shopify/remix-oxygen';
-import {Await, useLoaderData, Link, type MetaFunction} from '@remix-run/react';
-import {Suspense} from 'react';
+import {Await, Link, useLoaderData, type MetaFunction} from '@remix-run/react';
 import {Image, Money} from '@shopify/hydrogen';
+import {type LoaderFunctionArgs} from '@shopify/remix-oxygen';
+import {Suspense} from 'react';
 import type {
   FeaturedCollectionFragment,
   RecommendedProductsQuery,
 } from 'storefrontapi.generated';
+import {FourImageBanner} from '~/components/FourImageBanner';
+import {HeroBanner} from '~/components/HeroBanner';
 
 export const meta: MetaFunction = () => {
-  return [{title: 'Hydrogen | Home'}];
+  return [{title: 'Showpo UK'}];
 };
 
 export async function loader(args: LoaderFunctionArgs) {
-  // Start fetching non-critical data without blocking time to first byte
-  const deferredData = loadDeferredData(args);
+  const homepage = await args.context.storefront.query(HOME_PAGE_QUERY);
 
-  // Await the critical data required to render initial state of the page
-  const criticalData = await loadCriticalData(args);
-
-  return defer({...deferredData, ...criticalData});
+  return {
+    homepage,
+  };
 }
 
 /**
@@ -26,13 +26,13 @@ export async function loader(args: LoaderFunctionArgs) {
  * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
  */
 async function loadCriticalData({context}: LoaderFunctionArgs) {
-  const [{collections}] = await Promise.all([
-    context.storefront.query(FEATURED_COLLECTION_QUERY),
+  const [homepage] = await Promise.all([
+    context.storefront.query(HOME_PAGE_QUERY),
     // Add other queries here, so that they are loaded in parallel
   ]);
 
   return {
-    featuredCollection: collections.nodes[0],
+    homepage,
   };
 }
 
@@ -42,25 +42,26 @@ async function loadCriticalData({context}: LoaderFunctionArgs) {
  * Make sure to not throw any errors here, as it will cause the page to 500.
  */
 function loadDeferredData({context}: LoaderFunctionArgs) {
-  const recommendedProducts = context.storefront
-    .query(RECOMMENDED_PRODUCTS_QUERY)
-    .catch((error) => {
-      // Log query errors, but don't throw them so the page can still render
-      console.error(error);
-      return null;
-    });
-
-  return {
-    recommendedProducts,
-  };
+  return {};
 }
 
 export default function Homepage() {
-  const data = useLoaderData<typeof loader>();
+  const {homepage} = useLoaderData<typeof loader>();
+
+  const heroBanners = homepage.metaobject?.fields.find(
+    (f) => f.key === 'hero_banner',
+  );
+
+  const fourImageBanners = homepage.metaobject?.fields.find(
+    (f) => f.key === 'four_image_banner',
+  );
+
   return (
-    <div className="home">
-      <FeaturedCollection collection={data.featuredCollection} />
-      <RecommendedProducts products={data.recommendedProducts} />
+    <div>
+      <HeroBanner contentBlocks={heroBanners?.references?.nodes ?? []} />
+      <FourImageBanner
+        contentBlocks={fourImageBanners?.references?.nodes ?? []}
+      />
     </div>
   );
 }
@@ -108,8 +109,8 @@ function RecommendedProducts({
                     >
                       <Image
                         data={product.images.nodes[0]}
-                        aspectRatio="1/1"
-                        sizes="(min-width: 45em) 20vw, 50vw"
+                        aspectRatio="5/8"
+                        sizes="(min-width: 375px) 375px, 50vw"
                       />
                       <h4>{product.title}</h4>
                       <small>
@@ -180,3 +181,122 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     }
   }
 ` as const;
+
+// Query for Home Page
+const HOME_PAGE_QUERY = `#graphql
+fragment HomePageContentBlock on Metaobject {
+  id
+  fields {
+    key
+    type
+    value
+    reference {
+      ... on Collection {
+        handle
+        title
+      }
+      ... on MediaImage {
+        id
+        image {
+          id
+          altText
+          height
+          width
+          url
+        }
+      }
+    }
+  }
+}
+fragment FourImageContentBlock on Metaobject {
+  id
+  fields {
+    key
+    type
+    value
+    reference {
+      ... on Collection {
+        handle
+        title
+      }
+      ... on MediaImage {
+        id
+        image {
+          id
+          altText
+          height
+          width
+          url
+        }
+      }
+    }
+  }
+}
+query HomePage {
+  metaobject(handle: { handle: "home-page", type: "home_page" }) {
+    handle
+    id
+    type
+    fields {
+      key
+      type
+      value
+      references(first: 10) {
+        nodes {
+          ...HomePageContentBlock
+          ...FourImageContentBlock
+        }
+      }
+    }
+  }
+}
+` as const;
+
+// Query for Home Page
+// const FOUR_IMAGE_BANNER_QUERY = `#graphql
+// fragment FourImageContentBlock on Metaobject {
+//             id
+//             fields {
+//               key
+//               type
+//               value
+//               reference {
+//                 ...on Collection {
+//                   handle
+//                   title
+//                 }
+//                 ...on MediaImage {
+//                   id
+//                   image {
+//                     id
+//                     altText
+//                     height
+//                     width
+//                     url
+//                   }
+//                 }
+//               }
+//             }
+//           }
+// query FourImageBanner {
+//   metaobject(handle:  {
+//      handle: "four-image-banner"
+//      type: "four_image_banner"
+//   }) {
+//     handle
+//     id
+//     type
+//     fields {
+//       key
+//       type
+//       value
+//       references(first: 10) {
+//         nodes {
+//           ...FourImageContentBlock
+//         }
+//       }
+//     }
+//   }
+// }
+
+// ` as const;

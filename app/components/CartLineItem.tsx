@@ -1,11 +1,11 @@
-import type {CartLineUpdateInput} from '@shopify/hydrogen/storefront-api-types';
-import type {CartLayout} from '~/components/CartMain';
-import {CartForm, Image, type OptimisticCartLine} from '@shopify/hydrogen';
-import {useVariantUrl} from '~/lib/variants';
 import {Link} from '@remix-run/react';
-import {ProductPrice} from './ProductPrice';
-import {useAside} from './Aside';
+import {CartForm, Image, type OptimisticCartLine} from '@shopify/hydrogen';
+import type {CartLineUpdateInput} from '@shopify/hydrogen/storefront-api-types';
 import type {CartApiQueryFragment} from 'storefrontapi.generated';
+import type {CartLayout} from '~/components/CartMain';
+import {useVariantUrl} from '~/lib/variants';
+import {useAside} from './Aside';
+import {ProductPrice} from './ProductPrice';
 
 type CartLine = OptimisticCartLine<CartApiQueryFragment>;
 
@@ -26,15 +26,15 @@ export function CartLineItem({
   const {close} = useAside();
 
   return (
-    <li key={id} className="cart-line">
+    <li key={id} className="flex gap-4 mb-4">
       {image && (
         <Image
           alt={title}
-          aspectRatio="1/1"
+          aspectRatio="5/8"
           data={image}
-          height={100}
+          height={200}
+          width={138}
           loading="lazy"
-          width={100}
         />
       )}
 
@@ -48,9 +48,7 @@ export function CartLineItem({
             }
           }}
         >
-          <p>
-            <strong>{product.title}</strong>
-          </p>
+          <p className="text-sm">{product.title}</p>
         </Link>
         <ProductPrice price={line?.cost?.totalAmount} />
         <ul>
@@ -80,30 +78,30 @@ function CartLineQuantity({line}: {line: CartLine}) {
   const nextQuantity = Number((quantity + 1).toFixed(0));
 
   return (
-    <div className="cart-line-quantity">
-      <small>Quantity: {quantity} &nbsp;&nbsp;</small>
+    <div className="mt-4 flex items-center gap-3">
       <CartLineUpdateButton lines={[{id: lineId, quantity: prevQuantity}]}>
         <button
           aria-label="Decrease quantity"
           disabled={quantity <= 1 || !!isOptimistic}
           name="decrease-quantity"
           value={prevQuantity}
+          className="p-2 border size-7 inline-flex items-center justify-center border-black hover:bg-black hover:text-white transition-colors"
         >
           <span>&#8722; </span>
         </button>
       </CartLineUpdateButton>
-      &nbsp;
+      <small>Qty: {quantity}</small>
       <CartLineUpdateButton lines={[{id: lineId, quantity: nextQuantity}]}>
         <button
           aria-label="Increase quantity"
           name="increase-quantity"
           value={nextQuantity}
           disabled={!!isOptimistic}
+          className="p-2 border size-7 inline-flex items-center justify-center border-black hover:bg-black hover:text-white transition-colors"
         >
           <span>&#43;</span>
         </button>
       </CartLineUpdateButton>
-      &nbsp;
       <CartLineRemoveButton lineIds={[lineId]} disabled={!!isOptimistic} />
     </div>
   );
@@ -127,7 +125,11 @@ function CartLineRemoveButton({
       action={CartForm.ACTIONS.LinesRemove}
       inputs={{lineIds}}
     >
-      <button disabled={disabled} type="submit">
+      <button
+        disabled={disabled}
+        type="submit"
+        className="text-sm text-red-500 ml-auto"
+      >
         Remove
       </button>
     </CartForm>

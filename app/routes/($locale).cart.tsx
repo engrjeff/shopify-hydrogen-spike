@@ -1,8 +1,8 @@
-import {Await, type MetaFunction, useRouteLoaderData} from '@remix-run/react';
-import {Suspense} from 'react';
+import {Await, useRouteLoaderData, type MetaFunction} from '@remix-run/react';
 import type {CartQueryDataReturn} from '@shopify/hydrogen';
 import {CartForm} from '@shopify/hydrogen';
 import {json, type ActionFunctionArgs} from '@shopify/remix-oxygen';
+import {Suspense} from 'react';
 import {CartMain} from '~/components/CartMain';
 import type {RootLoader} from '~/root';
 
@@ -100,8 +100,7 @@ export default function Cart() {
   if (!rootData) return null;
 
   return (
-    <div className="cart">
-      <h1>Cart</h1>
+    <div className="container mx-auto max-w-5xl px-4">
       <Suspense fallback={<p>Loading cart ...</p>}>
         <Await
           resolve={rootData.cart}

@@ -6,9 +6,9 @@ import type {
   HeaderQuery,
 } from 'storefrontapi.generated';
 import {Aside} from '~/components/Aside';
-import {Footer} from '~/components/Footer';
-import {Header, HeaderMenu} from '~/components/Header';
 import {CartMain} from '~/components/CartMain';
+import {Footer} from '~/components/Footer';
+import {Header} from '~/components/Header';
 import {
   SEARCH_ENDPOINT,
   SearchFormPredictive,
@@ -34,9 +34,9 @@ export function PageLayout({
 }: PageLayoutProps) {
   return (
     <Aside.Provider>
-      <CartAside cart={cart} />
+      {/* <CartAside cart={cart} />
       <SearchAside />
-      <MobileMenuAside header={header} publicStoreDomain={publicStoreDomain} />
+      <MobileMenuAside header={header} publicStoreDomain={publicStoreDomain} /> */}
       {header && (
         <Header
           header={header}
@@ -151,24 +151,24 @@ function SearchAside() {
   );
 }
 
-function MobileMenuAside({
-  header,
-  publicStoreDomain,
-}: {
-  header: PageLayoutProps['header'];
-  publicStoreDomain: PageLayoutProps['publicStoreDomain'];
-}) {
-  return (
-    header.menu &&
-    header.shop.primaryDomain?.url && (
-      <Aside type="mobile" heading="MENU">
-        <HeaderMenu
-          menu={header.menu}
-          viewport="mobile"
-          primaryDomainUrl={header.shop.primaryDomain.url}
-          publicStoreDomain={publicStoreDomain}
-        />
-      </Aside>
-    )
-  );
-}
+// function MobileMenuAside({
+//   header,
+//   publicStoreDomain,
+// }: {
+//   header: PageLayoutProps['header'];
+//   publicStoreDomain: PageLayoutProps['publicStoreDomain'];
+// }) {
+//   return (
+//     header.menu &&
+//     header.shop.primaryDomain?.url && (
+//       <Aside type="mobile" heading="MENU">
+//         <HeaderMenu
+//           menu={header.menu}
+//           viewport="mobile"
+//           primaryDomainUrl={header.shop.primaryDomain.url}
+//           publicStoreDomain={publicStoreDomain}
+//         />
+//       </Aside>
+//     )
+//   );
+// }

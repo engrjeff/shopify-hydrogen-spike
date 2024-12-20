@@ -1,22 +1,21 @@
-import {useNonce, getShopAnalytics, Analytics} from '@shopify/hydrogen';
-import {defer, type LoaderFunctionArgs} from '@shopify/remix-oxygen';
 import {
   Links,
   Meta,
   Outlet,
   Scripts,
-  useRouteError,
-  useRouteLoaderData,
   ScrollRestoration,
   isRouteErrorResponse,
+  useRouteError,
+  useRouteLoaderData,
   type ShouldRevalidateFunction,
 } from '@remix-run/react';
-import favicon from '~/assets/favicon.svg';
-import resetStyles from '~/styles/reset.css?url';
-import appStyles from '~/styles/app.css?url';
-import tailwindCss from './styles/tailwind.css?url';
+import {Analytics, getShopAnalytics, useNonce} from '@shopify/hydrogen';
+import {defer, type LoaderFunctionArgs} from '@shopify/remix-oxygen';
+import favicon from '~/assets/favicon.png';
 import {PageLayout} from '~/components/PageLayout';
 import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
+import {CUSTOMER_DETAILS_QUERY} from './graphql/customer-account/CustomerDetailsQuery';
+import tailwindCss from './styles/tailwind.css?url';
 
 export type RootLoader = typeof loader;
 
@@ -41,8 +40,8 @@ export const shouldRevalidate: ShouldRevalidateFunction = ({
 export function links() {
   return [
     {rel: 'stylesheet', href: tailwindCss},
-    {rel: 'stylesheet', href: resetStyles},
-    {rel: 'stylesheet', href: appStyles},
+    // {rel: 'stylesheet', href: resetStyles},
+    // {rel: 'stylesheet', href: appStyles},
     {
       rel: 'preconnect',
       href: 'https://cdn.shopify.com',
@@ -127,6 +126,7 @@ function loadDeferredData({context}: LoaderFunctionArgs) {
   return {
     cart: cart.get(),
     isLoggedIn: customerAccount.isLoggedIn(),
+    customer: customerAccount.query(CUSTOMER_DETAILS_QUERY),
     footer,
   };
 }
