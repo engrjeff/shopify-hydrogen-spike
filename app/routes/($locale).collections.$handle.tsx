@@ -10,7 +10,7 @@ import {
 } from '@shopify/hydrogen';
 import {defer, redirect, type LoaderFunctionArgs} from '@shopify/remix-oxygen';
 import {useState} from 'react';
-import type {PlpItemFragment} from 'storefrontapi.generated';
+import type {FacetsQuery, PlpItemFragment} from 'storefrontapi.generated';
 import {CollectionDescription} from '~/components/CollectionDescription';
 import {FacetFilters} from '~/components/FacetFilters';
 import {SortSelect} from '~/components/SortSelect';
@@ -134,7 +134,11 @@ export default function Collection() {
             <div className="flex flex-col xl:flex-row xl:gap-8">
               <div className="w-[215px] flex-shrink-0 hidden xl:block space-y-2">
                 <SortSelect />
-                <FacetFilters facets={facets} />
+                <FacetFilters
+                  facets={
+                    facets as FacetsQuery['collection'] | null | undefined
+                  }
+                />
               </div>
               <div className="flex-1">
                 <div className="hidden xl:flex items-center justify-end pb-6 min-h-[54px]">
