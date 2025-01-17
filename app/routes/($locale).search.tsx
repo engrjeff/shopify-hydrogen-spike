@@ -1,16 +1,17 @@
+import {useLoaderData, type MetaFunction} from '@remix-run/react';
+import {getPaginationVariables} from '@shopify/hydrogen';
 import {
   json,
-  type LoaderFunctionArgs,
   type ActionFunctionArgs,
+  type LoaderFunctionArgs,
 } from '@shopify/remix-oxygen';
-import {useLoaderData, type MetaFunction} from '@remix-run/react';
-import {getPaginationVariables, Analytics} from '@shopify/hydrogen';
-import {SearchForm} from '~/components/SearchForm';
+import {ProductItem} from '~/components/ProductItem';
 import {SearchResults} from '~/components/SearchResults';
+import {SortSelect} from '~/components/SortSelect';
 import {
-  type RegularSearchReturn,
-  type PredictiveSearchReturn,
   getEmptyPredictiveSearchResult,
+  type PredictiveSearchReturn,
+  type RegularSearchReturn,
 } from '~/lib/search';
 
 export const meta: MetaFunction = () => {
@@ -40,40 +41,82 @@ export default function SearchPage() {
   if (type === 'predictive') return null;
 
   return (
-    <div className="search">
-      <h1>Search</h1>
-      <SearchForm>
-        {({inputRef}) => (
-          <>
-            <input
-              defaultValue={term}
-              name="q"
-              placeholder="Search…"
-              ref={inputRef}
-              type="search"
-            />
-            &nbsp;
-            <button type="submit">Search</button>
-          </>
-        )}
-      </SearchForm>
-      {error && <p style={{color: 'red'}}>{error}</p>}
-      {!term || !result?.total ? (
+    <div className="container w-full max-w-[1400px] mx-auto px-4">
+      <div className="pt-4 pb-2 lg:py-6 flex justify-center items-center">
+        <div className="flex items-center flex-wrap justify-center gap-1 lg:gap-3 mb-3 lg:mb-0">
+          <h1 className="font-sans font-bold text-xl mb-0 text-center whitespace-nowrap">
+            Search results for: {decodeURIComponent(term)}
+          </h1>
+          <span className="font-normal text-lightText text-sm whitespace-nowrap">
+            {result.total} {result.total > 1 ? 'items' : 'item'}
+          </span>
+        </div>
+      </div>
+
+      {!term || !result.total ? (
         <SearchResults.Empty />
       ) : (
-        <SearchResults result={result} term={term}>
-          {({articles, pages, products, term}) => (
-            <div>
-              <SearchResults.Products products={products} term={term} />
-              <SearchResults.Pages pages={pages} term={term} />
-              <SearchResults.Articles articles={articles} term={term} />
+        <div className="mb-20 md:mt-4">
+          <div className="flex flex-col xl:flex-row xl:gap-8">
+            <div className="w-[215px] flex-shrink-0 hidden xl:block space-y-2">
+              <SortSelect />
             </div>
-          )}
-        </SearchResults>
+            <div className="flex-1">
+              <div className="hidden xl:flex items-center justify-end pb-6 min-h-[54px]">
+                Top Pagination here
+              </div>
+              <ul className="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-5 gap-y-3 gap-x-2">
+                {result.items.products.nodes?.map((product, index) => (
+                  <li key={`product-${product?.id}`}>
+                    <ProductItem product={product} />
+                  </li>
+                ))}
+              </ul>
+              <div className="flex justify-end py-6 min-h-[54px]">
+                Bottom Pagination here
+              </div>
+            </div>
+          </div>
+        </div>
       )}
-      <Analytics.SearchView data={{searchTerm: term, searchResults: result}} />
     </div>
   );
+
+  // return (
+  //   <div className="search">
+  //     <h1>Search</h1>
+  //     <SearchForm>
+  //       {({inputRef}) => (
+  //         <>
+  //           <input
+  //             defaultValue={term}
+  //             name="q"
+  //             placeholder="Search…"
+  //             ref={inputRef}
+  //             type="search"
+  //           />
+  //           &nbsp;
+  //           <button type="submit">Search</button>
+  //         </>
+  //       )}
+  //     </SearchForm>
+  //     {error && <p style={{color: 'red'}}>{error}</p>}
+  //     {!term || !result?.total ? (
+  //       <SearchResults.Empty />
+  //     ) : (
+  //       <SearchResults result={result} term={term}>
+  //         {({articles, pages, products, term}) => (
+  //           <div>
+  //             <SearchResults.Products products={products} term={term} />
+  //             <SearchResults.Pages pages={pages} term={term} />
+  //             <SearchResults.Articles articles={articles} term={term} />
+  //           </div>
+  //         )}
+  //       </SearchResults>
+  //     )}
+  //     <Analytics.SearchView data={{searchTerm: term, searchResults: result}} />
+  //   </div>
+  // );
 }
 
 /**
@@ -81,39 +124,47 @@ export default function SearchPage() {
  * (adjust as needed)
  */
 const SEARCH_PRODUCT_FRAGMENT = `#graphql
+  fragment MoneyProductItem on MoneyV2 {
+      amount
+      currencyCode
+  }
   fragment SearchProduct on Product {
     __typename
-    handle
     id
-    publishedAt
     title
+    handle
     trackingParameters
-    vendor
-    variants(first: 1) {
+    featuredImage {
+      id
+      altText
+      url
+      width
+      height
+    }
+    priceRange {
+      minVariantPrice {
+        ...MoneyProductItem
+      }
+      maxVariantPrice {
+        ...MoneyProductItem
+      }
+    }
+    variants(first: 10) {
       nodes {
         id
-        image {
-          url
-          altText
-          width
-          height
-        }
-        price {
-          amount
-          currencyCode
-        }
-        compareAtPrice {
-          amount
-          currencyCode
-        }
+        availableForSale
         selectedOptions {
           name
           value
         }
-        product {
-          handle
-          title
-        }
+      }
+    }
+    options {
+      id
+      name
+      optionValues {
+        id
+        name
       }
     }
   }
@@ -219,7 +270,7 @@ async function regularSearch({
 >): Promise<RegularSearchReturn> {
   const {storefront} = context;
   const url = new URL(request.url);
-  const variables = getPaginationVariables(request, {pageBy: 8});
+  const variables = getPaginationVariables(request, {pageBy: 36});
   const term = String(url.searchParams.get('q') || '');
 
   // Search articles, pages, and products for the `q` term
@@ -293,25 +344,47 @@ const PREDICTIVE_SEARCH_PAGE_FRAGMENT = `#graphql
 ` as const;
 
 const PREDICTIVE_SEARCH_PRODUCT_FRAGMENT = `#graphql
+  fragment MoneyProductItem on MoneyV2 {
+      amount
+      currencyCode
+  }
   fragment PredictiveProduct on Product {
     __typename
     id
     title
     handle
     trackingParameters
-    variants(first: 1) {
+    featuredImage {
+      id
+      altText
+      url
+      width
+      height
+    }
+    priceRange {
+      minVariantPrice {
+        ...MoneyProductItem
+      }
+      maxVariantPrice {
+        ...MoneyProductItem
+      }
+    }
+    variants(first: 10) {
       nodes {
         id
-        image {
-          url
-          altText
-          width
-          height
+        availableForSale
+        selectedOptions {
+          name
+          value
         }
-        price {
-          amount
-          currencyCode
-        }
+      }
+    }
+    options {
+      id
+      name
+      optionValues {
+        id
+        name
       }
     }
   }
@@ -341,6 +414,7 @@ const PREDICTIVE_SEARCH_QUERY = `#graphql
       limitScope: $limitScope,
       query: $term,
       types: $types,
+      searchableFields: [TITLE, PRODUCT_TYPE, VARIANTS_TITLE, VENDOR, BODY]
     ) {
       articles {
         ...PredictiveArticle

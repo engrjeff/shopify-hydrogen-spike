@@ -1,20 +1,13 @@
-import type {FetcherWithComponents, MetaFunction} from '@remix-run/react';
-import {Link, useLoaderData} from '@remix-run/react';
-import type {VariantOptionValue} from '@shopify/hydrogen';
-import {
-  CartForm,
-  getPaginationVariables,
-  Image,
-  Money,
-  VariantSelector,
-} from '@shopify/hydrogen';
+import type {MetaFunction} from '@remix-run/react';
+import {useLoaderData} from '@remix-run/react';
+import {getPaginationVariables} from '@shopify/hydrogen';
+import type {ProductCollectionSortKeys} from '@shopify/hydrogen/storefront-api-types';
 import {defer, redirect, type LoaderFunctionArgs} from '@shopify/remix-oxygen';
-import {useState} from 'react';
-import type {FacetsQuery, PlpItemFragment} from 'storefrontapi.generated';
+import type {FacetsQuery} from 'storefrontapi.generated';
 import {CollectionDescription} from '~/components/CollectionDescription';
 import {FacetFilters} from '~/components/FacetFilters';
+import {ProductItem} from '~/components/ProductItem';
 import {SortSelect} from '~/components/SortSelect';
-import {useVariantUrl} from '~/lib/variants';
 
 export const meta: MetaFunction<typeof loader> = ({data}) => {
   return [{title: `${data?.collection.title ?? 'Showpo UK'}`}];
@@ -46,8 +39,10 @@ async function loadCriticalData({
 
   const queryObj = Object.fromEntries(searchParams.entries());
 
+  const {sortKey, ...queries} = queryObj;
+
   const paginationVariables = getPaginationVariables(request, {
-    pageBy: 8,
+    pageBy: 36,
   });
 
   if (!handle) {
@@ -61,7 +56,7 @@ async function loadCriticalData({
         ...paginationVariables,
         filters: [
           {
-            ...queryObj,
+            ...queries,
             available: queryObj.available
               ? queryObj.available === 'true'
                 ? true
@@ -69,6 +64,7 @@ async function loadCriticalData({
               : undefined,
           },
         ],
+        sortKey: sortKey as ProductCollectionSortKeys,
       },
       // Add other queries here, so that they are loaded in parallel
     }),
@@ -113,7 +109,7 @@ export default function Collection() {
             <h1 className="font-sans font-bold text-xl mb-0 text-center whitespace-nowrap">
               {collection.title}
             </h1>
-            <span className="font-normal text-lightText text-sm whitespace-nowrap">
+            <span className="hidden font-normal text-lightText text-sm whitespace-nowrap">
               {productCount} {productCount > 1 ? 'items' : 'item'}
             </span>
           </div>
@@ -133,7 +129,7 @@ export default function Collection() {
           <div className="mb-20 md:mt-4">
             <div className="flex flex-col xl:flex-row xl:gap-8">
               <div className="w-[215px] flex-shrink-0 hidden xl:block space-y-2">
-                <SortSelect />
+                <SortSelect key={collection.handle} />
                 <FacetFilters
                   facets={
                     facets as FacetsQuery['collection'] | null | undefined
@@ -200,111 +196,6 @@ export default function Collection() {
   // );
 }
 
-function ProductItem({
-  product,
-  loading,
-}: {
-  product: PlpItemFragment;
-  loading?: 'eager' | 'lazy';
-}) {
-  const variant = product.variants.nodes[0];
-  const variantUrl = useVariantUrl(product.handle, variant.selectedOptions);
-
-  const [justAddedToCart, setJustAddedToCart] = useState(false);
-
-  return (
-    <div className="w-full h-full relative flex flex-col">
-      <div className="relative mb-2">
-        <div className="flex relative">
-          <Link
-            prefetch="intent"
-            to={`/products/${product.handle}`}
-            className="flex-1 w-full"
-          >
-            {product.featuredImage && (
-              <Image
-                alt={product.featuredImage.altText || product.title}
-                data={product.featuredImage}
-                loading={loading}
-                aspectRatio="5/8"
-                sizes="(min-width: 45em) 375px, 100vw"
-                className="object-cover object-top"
-              />
-            )}
-            <span className="sr-only">click here to view</span>
-          </Link>
-        </div>
-
-        {justAddedToCart ? (
-          <div className="bg-black text-center py-3 absolute bottom-0 w-full">
-            <span className="uppercase text-white text-sm font-semibold">
-              It&apos;s in the bag!
-            </span>
-          </div>
-        ) : null}
-      </div>
-      <Link
-        to={`/products/${product.handle}`}
-        className="text-sm inline-block hover:underline text-center uppercase mb-1"
-      >
-        <span className="line-clamp-2 w-full">{product?.title}</span>
-      </Link>
-
-      <small className="text-center text-[15px] font-bold">
-        <Money data={product.priceRange.minVariantPrice} />
-      </small>
-
-      <VariantSelector
-        handle={product.handle}
-        options={product.options}
-        variants={product.variants.nodes}
-      >
-        {({option}) => (
-          <>
-            <div className="flex items-center justify-center gap-1.5 flex-wrap mt-2">
-              {option.values.map((optionItem) => {
-                return (
-                  <SizeBubble key={optionItem.value} optionItem={optionItem} />
-                );
-              })}
-            </div>
-          </>
-        )}
-      </VariantSelector>
-    </div>
-  );
-}
-
-function SizeBubble({optionItem}: {optionItem: VariantOptionValue}) {
-  return (
-    <CartForm
-      route="/cart"
-      inputs={{
-        lines: optionItem.variant?.id
-          ? [
-              {
-                merchandiseId: optionItem.variant?.id,
-                quantity: 1,
-                selectedVariant: optionItem.variant,
-              },
-            ]
-          : [],
-      }}
-      action={CartForm.ACTIONS.LinesAdd}
-    >
-      {(fetcher: FetcherWithComponents<any>) => (
-        <button
-          type="submit"
-          disabled={!optionItem.isAvailable || fetcher.state !== 'idle'}
-          className="select-none border border-black h-7 w-7 flex items-center justify-center text-xs font-semibold rounded-full transition-colors duration-300 hover:text-white hover:bg-black disabled:hover:bg-transparent disabled:hover:text-black hover:border-black disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {optionItem.value}
-        </button>
-      )}
-    </CartForm>
-  );
-}
-
 const PLP_ITEM_FRAGMENT = `#graphql
   fragment MoneyProductItem on MoneyV2 {
     amount
@@ -329,7 +220,7 @@ const PLP_ITEM_FRAGMENT = `#graphql
         ...MoneyProductItem
       }
     }
-    variants(first: 10) {
+    variants(first: 20) {
       nodes {
         id
         availableForSale
@@ -362,18 +253,21 @@ const COLLECTION_QUERY = `#graphql
     $startCursor: String
     $endCursor: String
     $filters: [ProductFilter!]
+    $sortKey: ProductCollectionSortKeys
   ) @inContext(country: $country, language: $language) {
     collection(handle: $handle) {
       id
       handle
       title
       description
+      descriptionHtml 
       products(
         first: $first,
         last: $last,
         before: $startCursor,
         after: $endCursor,
-        filters: $filters
+        filters: $filters,
+        sortKey: $sortKey
       ) {
         nodes {
           ...PLPItem

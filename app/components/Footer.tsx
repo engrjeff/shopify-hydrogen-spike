@@ -1,5 +1,5 @@
+import {Await, Link} from '@remix-run/react';
 import {Suspense} from 'react';
-import {Await, NavLink} from '@remix-run/react';
 import type {FooterQuery, HeaderQuery} from 'storefrontapi.generated';
 
 interface FooterProps {
@@ -42,7 +42,10 @@ function FooterMenu({
   publicStoreDomain: string;
 }) {
   return (
-    <nav className="footer-menu" role="navigation">
+    <nav
+      className="flex flex-col gap-3 container mx-auto max-w-7xl py-6"
+      role="navigation"
+    >
       {(menu || FALLBACK_FOOTER_MENU).items.map((item) => {
         if (!item.url) return null;
         // if the url is internal, we strip the domain
@@ -58,15 +61,14 @@ function FooterMenu({
             {item.title}
           </a>
         ) : (
-          <NavLink
-            end
+          <Link
             key={item.id}
             prefetch="intent"
-            style={activeLinkStyle}
+            className="hover:underline"
             to={url}
           >
             {item.title}
-          </NavLink>
+          </Link>
         );
       })}
     </nav>

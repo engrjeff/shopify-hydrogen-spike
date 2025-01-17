@@ -160,5 +160,9 @@ function SearchResultsProducts({
 }
 
 function SearchResultsEmpty() {
-  return <p>No results, try a different search.</p>;
+  return (
+    <div className="min-h-[300px]">
+      <p className="text-center">No results, try a different search.</p>
+    </div>
+  );
 }

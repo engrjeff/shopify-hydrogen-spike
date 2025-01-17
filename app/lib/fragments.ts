@@ -244,3 +244,27 @@ export const FOOTER_QUERY = `#graphql
   }
   ${MENU_FRAGMENT}
 ` as const;
+
+export const SITEWIDE_BANNER_QUERY = `#graphql
+  query SitewideBanner {
+    metaobject(handle : {
+      handle: "sitewide-sale-banner",
+      type: "site_wide_sale_banner"
+    }) {
+      id
+      handle
+      type
+      fields {
+        key
+        value
+        type
+        reference {
+          ...on Collection {
+              handle
+              title
+          }
+        }
+      }
+    }
+  }
+` as const;

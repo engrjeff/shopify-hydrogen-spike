@@ -12,6 +12,7 @@ import {cn} from '~/lib/utils';
 import {AccountMenu} from './AccountMenu';
 import {MenuIcon} from './Icons';
 import {MiniCart} from './MiniCart';
+import {StoreSearch} from './StoreSearch';
 
 interface HeaderProps {
   header: HeaderQuery;
@@ -54,7 +55,7 @@ export function Header({
           </Link>
 
           <div className="justify-self-end flex items-center gap-2">
-            <span>Search</span>
+            <StoreSearch />
             <AccountMenu isLoggedIn={isLoggedIn} />
             <MiniCart cart={cart} />
           </div>

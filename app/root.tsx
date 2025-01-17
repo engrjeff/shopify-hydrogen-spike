@@ -13,7 +13,11 @@ import {Analytics, getShopAnalytics, useNonce} from '@shopify/hydrogen';
 import {defer, type LoaderFunctionArgs} from '@shopify/remix-oxygen';
 import favicon from '~/assets/favicon.png';
 import {PageLayout} from '~/components/PageLayout';
-import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
+import {
+  FOOTER_QUERY,
+  HEADER_QUERY,
+  SITEWIDE_BANNER_QUERY,
+} from '~/lib/fragments';
 import {CUSTOMER_DETAILS_QUERY} from './graphql/customer-account/CustomerDetailsQuery';
 import tailwindCss from './styles/tailwind.css?url';
 
@@ -89,7 +93,7 @@ export async function loader(args: LoaderFunctionArgs) {
 async function loadCriticalData({context}: LoaderFunctionArgs) {
   const {storefront} = context;
 
-  const [header] = await Promise.all([
+  const [header, sitewideBanner] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
@@ -97,9 +101,12 @@ async function loadCriticalData({context}: LoaderFunctionArgs) {
       },
     }),
     // Add other queries here, so that they are loaded in parallel
+    storefront.query(SITEWIDE_BANNER_QUERY, {
+      cache: storefront.CacheLong(),
+    }),
   ]);
 
-  return {header};
+  return {header, sitewideBanner};
 }
 
 /**

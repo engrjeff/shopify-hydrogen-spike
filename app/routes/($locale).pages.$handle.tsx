@@ -55,7 +55,7 @@ export default function Page() {
   const {page} = useLoaderData<typeof loader>();
 
   return (
-    <div className="page">
+    <div className="container w-full max-w-[1400px] mx-auto px-4">
       <header>
         <h1>{page.title}</h1>
       </header>

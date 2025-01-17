@@ -1,12 +1,11 @@
 import {
   useFetcher,
   useNavigate,
-  type FormProps,
   type Fetcher,
+  type FormProps,
 } from '@remix-run/react';
-import React, {useRef, useEffect} from 'react';
+import React, {useEffect, useRef} from 'react';
 import type {PredictiveSearchReturn} from '~/lib/search';
-import {useAside} from './Aside';
 
 type SearchFormPredictiveChildren = (args: {
   fetchResults: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -17,6 +16,7 @@ type SearchFormPredictiveChildren = (args: {
 
 type SearchFormPredictiveProps = Omit<FormProps, 'children'> & {
   children: SearchFormPredictiveChildren | null;
+  onClose: () => void;
 };
 
 export const SEARCH_ENDPOINT = '/search';
@@ -26,13 +26,13 @@ export const SEARCH_ENDPOINT = '/search';
  **/
 export function SearchFormPredictive({
   children,
+  onClose,
   className = 'predictive-search-form',
   ...props
 }: SearchFormPredictiveProps) {
   const fetcher = useFetcher<PredictiveSearchReturn>({key: 'search'});
   const inputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
-  const aside = useAside();
 
   /** Reset the input value and blur the input */
   function resetInput(event: React.FormEvent<HTMLFormElement>) {
@@ -47,7 +47,7 @@ export function SearchFormPredictive({
   function goToSearch() {
     const term = inputRef?.current?.value;
     navigate(SEARCH_ENDPOINT + (term ? `?q=${term}` : ''));
-    aside.close();
+    onClose();
   }
 
   /** Fetch search results based on the input value */
@@ -62,6 +62,8 @@ export function SearchFormPredictive({
   // will select the element based on the input
   useEffect(() => {
     inputRef?.current?.setAttribute('type', 'search');
+
+    inputRef?.current?.focus();
   }, []);
 
   if (typeof children !== 'function') {

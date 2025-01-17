@@ -1,12 +1,11 @@
 import {Link, useFetcher, type Fetcher} from '@remix-run/react';
 import {Image, Money} from '@shopify/hydrogen';
-import React, {useRef, useEffect} from 'react';
+import React, {useEffect, useRef} from 'react';
 import {
   getEmptyPredictiveSearchResult,
   urlWithTrackingParams,
   type PredictiveSearchReturn,
 } from '~/lib/search';
-import {useAside} from './Aside';
 
 type PredictiveSearchItems = PredictiveSearchReturn['result']['items'];
 
@@ -34,6 +33,7 @@ type PartialPredictiveSearchResult<
 
 type SearchResultsPredictiveProps = {
   children: (args: SearchResultsPredictiveArgs) => React.ReactNode;
+  onClose: () => void;
 };
 
 /**
@@ -41,8 +41,8 @@ type SearchResultsPredictiveProps = {
  */
 export function SearchResultsPredictive({
   children,
+  onClose,
 }: SearchResultsPredictiveProps) {
-  const aside = useAside();
   const {term, inputRef, fetcher, total, items} = usePredictiveSearch();
 
   /*
@@ -60,7 +60,7 @@ export function SearchResultsPredictive({
    */
   function closeSearch() {
     resetInput();
-    aside.close();
+    onClose();
   }
 
   return children({
@@ -129,8 +129,8 @@ function SearchResultsPredictiveCollections({
   if (!collections.length) return null;
 
   return (
-    <div className="predictive-search-result" key="collections">
-      <h5>Collections</h5>
+    <div className="flex-1 text-sm" key="collections">
+      <p className="text-gray-600 mb-2 border-b border-gray-300">Collections</p>
       <ul>
         {collections.map((collection) => {
           const colllectionUrl = urlWithTrackingParams({
@@ -140,8 +140,11 @@ function SearchResultsPredictiveCollections({
           });
 
           return (
-            <li className="predictive-search-result-item" key={collection.id}>
-              <Link onClick={closeSearch} to={colllectionUrl}>
+            <li key={collection.id}>
+              <a
+                href={`/collections/${collection.handle}`}
+                className="w-full block p-1.5 hover:bg-gray-100 hover:underline"
+              >
                 {collection.image?.url && (
                   <Image
                     alt={collection.image.altText ?? ''}
@@ -153,7 +156,7 @@ function SearchResultsPredictiveCollections({
                 <div>
                   <span>{collection.title}</span>
                 </div>
-              </Link>
+              </a>
             </li>
           );
         })}
@@ -170,8 +173,8 @@ function SearchResultsPredictivePages({
   if (!pages.length) return null;
 
   return (
-    <div className="predictive-search-result" key="pages">
-      <h5>Pages</h5>
+    <div className="flex-1 text-sm" key="pages">
+      <p className="text-gray-600 mb-2 border-b border-gray-300">Pages</p>
       <ul>
         {pages.map((page) => {
           const pageUrl = urlWithTrackingParams({
@@ -181,8 +184,12 @@ function SearchResultsPredictivePages({
           });
 
           return (
-            <li className="predictive-search-result-item" key={page.id}>
-              <Link onClick={closeSearch} to={pageUrl}>
+            <li key={page.id}>
+              <Link
+                onClick={closeSearch}
+                to={pageUrl}
+                className="w-full block p-1.5 hover:bg-gray-100 hover:underline"
+              >
                 <div>
                   <span>{page.title}</span>
                 </div>
@@ -203,9 +210,9 @@ function SearchResultsPredictiveProducts({
   if (!products.length) return null;
 
   return (
-    <div className="predictive-search-result" key="products">
-      <h5>Products</h5>
-      <ul>
+    <div className="flex-1 text-sm empty:hidden" key="products">
+      <p className="text-gray-600 mb-2 border-b border-gray-300">Products</p>
+      <ul className="space-y-1">
         {products.map((product) => {
           const productUrl = urlWithTrackingParams({
             baseUrl: `/products/${product.handle}`,
@@ -213,27 +220,34 @@ function SearchResultsPredictiveProducts({
             term: term.current,
           });
 
-          const image = product?.variants?.nodes?.[0].image;
+          const image = product?.featuredImage;
           return (
             <li className="predictive-search-result-item" key={product.id}>
-              <Link to={productUrl} onClick={closeSearch}>
+              <a
+                href={productUrl}
+                onClick={closeSearch}
+                className="flex items-start gap-4 p-2 hover:bg-gray-100 group"
+              >
                 {image && (
                   <Image
                     alt={image.altText ?? ''}
                     src={image.url}
                     width={50}
-                    height={50}
+                    height={80}
+                    className="object-contain object-top"
                   />
                 )}
                 <div>
-                  <p>{product.title}</p>
+                  <p className="text-[13px] group-hover:underline">
+                    {product.title}
+                  </p>
                   <small>
-                    {product?.variants?.nodes?.[0].price && (
-                      <Money data={product.variants.nodes[0].price} />
+                    {product?.priceRange.minVariantPrice && (
+                      <Money data={product.priceRange.minVariantPrice} />
                     )}
                   </small>
                 </div>
-              </Link>
+              </a>
             </li>
           );
         })}
@@ -244,20 +258,28 @@ function SearchResultsPredictiveProducts({
 
 function SearchResultsPredictiveQueries({
   queries,
-  queriesDatalistId,
-}: PartialPredictiveSearchResult<'queries', never> & {
-  queriesDatalistId: string;
-}) {
+}: PartialPredictiveSearchResult<'queries', never>) {
   if (!queries.length) return null;
 
   return (
-    <datalist id={queriesDatalistId}>
-      {queries.map((suggestion) => {
-        if (!suggestion) return null;
-
-        return <option key={suggestion.text} value={suggestion.text} />;
-      })}
-    </datalist>
+    <div className="text-sm">
+      <p className="text-gray-600 mb-2 border-b border-gray-300">Suggestions</p>
+      <ul>
+        {queries.map((suggestion, index) => (
+          <li key={`suggestion-${suggestion.text}-${index + 1}`}>
+            <a
+              href={urlWithTrackingParams({
+                baseUrl: '/search',
+                trackingParams: suggestion.trackingParameters,
+                term: suggestion.text,
+              })}
+              className="w-full block p-1.5 hover:bg-gray-100 hover:underline"
+              dangerouslySetInnerHTML={{__html: suggestion.styledText}}
+            ></a>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

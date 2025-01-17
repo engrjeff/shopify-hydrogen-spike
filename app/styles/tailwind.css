@@ -4,3 +4,15 @@
  */
 
 @import 'tailwindcss';
+
+@layer base {
+  .store-search:empty {
+    display: none;
+  }
+
+  .store-search mark {
+    background-color: transparent;
+    color: black;
+    font-weight: 700;
+  }
+}
